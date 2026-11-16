@@ -1,0 +1,23 @@
+# Запуск: docker compose up   →   http://localhost:8000
+services:
+  # Сама платформа на PHP 8.3 (встроенный веб-сервер PHP)
+  app:
+    image: php:8.3-cli
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: php -S 0.0.0.0:8000 -t public public/index.php
+    ports:
+      - "127.0.0.1:8000:8000"   # только с этого компьютера
+    environment:
+      PHP7_RUNNER_URL: http://php7:9000
+      PHP_CLI_SERVER_WORKERS: "4"
+    depends_on:
+      - php7
+
+  # Исполнитель кода на PHP 7.0 для легаси-заданий. Порт наружу не открыт.
+  php7:
+    image: php:7.0-cli
+    volumes:
+      - ./runner:/runner:ro
+    command: php -S 0.0.0.0:9000 /runner/server.php
