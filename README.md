@@ -47,7 +47,7 @@ php -S localhost:8000 -t public public/index.php
 
 ## Что дальше
 
-Состояние курса, формат уроков и план оставшихся блоков — в [docs/ROADMAP.md](docs/ROADMAP.md).
+Состояние курса, формат уроков и план оставшихся блоков — в [docs/ROADMAP.md](docs/ROADMAP.md). Направления для будущих курсов — в [docs/FUTURE-COURSES.md](docs/FUTURE-COURSES.md).
 
 ## Сбросить прогресс
 
