@@ -4,19 +4,52 @@
 // страницы платформы и не может прочитать её данные. Тесты выполняются внутри
 // рамки и присылают результаты наружу через postMessage.
 
-/** Собирает HTML-документ для рамки из кода ученика. */
-function buildPreviewDoc(task, code, harness) {
-  const bootstrap = task.bootstrap;
+/**
+ * Пролог — служебный скрипт, который выполняется в рамке раньше кода ученика:
+ *  - пересылает наружу console.log и ошибки, чтобы показать их под предпросмотром;
+ *  - подменяет localStorage. В изолированной рамке настоящий недоступен, поэтому
+ *    данные лежат в объекте, а при каждом изменении отправляются платформе.
+ * Записан в одну строку, чтобы номера строк в ошибках было легко пересчитать.
+ */
+function buildPrelude(storage) {
+  const data = JSON.stringify(storage || {}).replace(/</g, '\\u003c');
+  return '<script>(function(){'
+    + "var send=function(m){parent.postMessage(m,'*')};"
+    + "var fmt=function(v){if(typeof v==='string')return v;if(v instanceof Error)return v.name+': '+v.message;"
+    + "if(v instanceof Element)return '<'+v.tagName.toLowerCase()+(v.id?'#'+v.id:'')+'>';"
+    + "try{var s=JSON.stringify(v);return s===undefined?String(v):s}catch(e){return String(v)}};"
+    + "['log','info','warn','error'].forEach(function(k){var o=console[k];console[k]=function(){"
+    + "var a=[].slice.call(arguments);send({type:'console',level:k,text:a.map(fmt).join(' ')});o.apply(console,a)}});"
+    + "window.addEventListener('error',function(e){send({type:'console',level:'error',text:String(e.message).replace(/^Uncaught /,''),line:e.lineno})});"
+    + "window.addEventListener('unhandledrejection',function(e){send({type:'console',level:'error',text:'Ошибка в промисе: '+fmt(e.reason)})});"
+    + 'var data=' + data + ';'
+    + 'var sync=function(){send({type:"storage",data:data})};'
+    + 'var store={getItem:function(k){return Object.prototype.hasOwnProperty.call(data,k)?data[k]:null},'
+    + 'setItem:function(k,v){data[k]=String(v);sync()},removeItem:function(k){delete data[k];sync()},'
+    + 'clear:function(){data={};sync()},key:function(i){return Object.keys(data)[i]||null},'
+    + 'get length(){return Object.keys(data).length}};'
+    + "try{Object.defineProperty(window,'localStorage',{value:store,configurable:true})}catch(e){}"
+    + '})();<\/script>';
+}
+
+/** Часть документа до кода ученика. Число строк в ней — сдвиг номеров строк в ошибках. */
+function previewHead(task, storage) {
   return `<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${bootstrap ? '<link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">' : ''}
+${buildPrelude(storage)}
+${task.bootstrap ? '<link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">' : ''}
 </head>
 <body>
-${code}
-${bootstrap ? '<script src="/vendor/bootstrap/bootstrap.bundle.min.js"><\/script>' : ''}
+`;
+}
+
+/** Собирает HTML-документ для рамки из кода ученика. */
+function buildPreviewDoc(task, code, harness, storage) {
+  return `${previewHead(task, storage)}${code}
+${task.bootstrap ? '<script src="/vendor/bootstrap/bootstrap.bundle.min.js"><\/script>' : ''}
 ${harness ? `<script>${harness}<\/script>` : ''}
 </body>
 </html>`;
@@ -48,6 +81,16 @@ function buildHarness(tests) {
   const px = (target, property) => Math.round(parseFloat(css(target, property)) * 10) / 10;
   const box = (target) => $(target).getBoundingClientRect();
   const text = (target) => $(target).textContent.replace(/\\s+/g, ' ').trim();
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  // Действия пользователя: щелчок, ввод текста, отправка формы
+  const click = (target) => $(target).click();
+  const type = (target, value) => {
+    const field = $(target);
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const submit = (target) => $(target).requestSubmit();
   // Попросить страницу платформы изменить ширину рамки и дождаться перерисовки
   const setWidth = (width) => new Promise((resolve) => {
     const onMessage = (event) => {
@@ -95,13 +138,15 @@ function setupHtml(section, task) {
           <button class="tab is-active" data-width="">Вся ширина</button>
         </div>
       </div>
-      <div class="preview-wrap"><iframe class="preview" sandbox="allow-scripts" title="Предпросмотр"></iframe></div>
+      <div class="preview-wrap"><iframe class="preview" sandbox="allow-scripts allow-forms" title="Предпросмотр"></iframe></div>
+      <div class="preview-console" hidden></div>
       <div class="toolbar">
         <button class="btn btn-primary" data-act="check">Проверить <kbd>Ctrl+Enter</kbd></button>
         <span class="spacer"></span>
         ${hints.length ? '<button class="btn btn-quiet" data-act="hint"></button>' : ''}
         <button class="btn btn-quiet" data-act="solution" hidden>Показать решение</button>
-        <button class="btn btn-quiet" data-act="reset" title="Вернуть исходный код">Сбросить</button>
+${task.storage ? '<button class="btn btn-quiet" data-act="clear-storage" title="Удалить всё, что страница сохранила в localStorage">Очистить хранилище</button>' : ''}
+                <button class="btn btn-quiet" data-act="reset" title="Вернуть исходный код">Сбросить</button>
       </div>
       <div class="hints"></div>
       <div class="output" hidden></div>
@@ -121,13 +166,49 @@ function setupHtml(section, task) {
 
   const editor = makeEditor(body.querySelector('.editor'), 'html', task.saved ?? task.starter, () => check());
 
+  // --- Консоль и хранилище рамки ---
+  const consoleBox = body.querySelector('.preview-console');
+  const storageKey = `preview-storage:${task.id}`;
+  let consoleLines = [];
+
+  function loadStorage() {
+    try { return JSON.parse(localStorage.getItem(storageKey)) || {}; } catch (e) { return {}; }
+  }
+
+  function showConsole() {
+    consoleBox.hidden = consoleLines.length === 0;
+    consoleBox.innerHTML = '<div class="out-label">Консоль</div>' + consoleLines.slice(-30)
+      .map((line) => `<div class="console-line is-${line.level}">${escapeHtml(line.text)}</div>`).join('');
+  }
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== frame.contentWindow || !event.data) return; // сообщения только от нашей рамки
+    if (event.data.type === 'console') {
+      let text = String(event.data.text);
+      if (event.data.line) {
+        // номер строки приходит по всему документу рамки — вычитаем служебную шапку
+        const line = event.data.line - previewHead(task, {}).split('\n').length + 1;
+        const total = (view === 'sample' ? task.sample : editor.getValue()).split('\n').length;
+        if (line >= 1 && line <= total) text += ` (строка ${line})`;
+      }
+      consoleLines.push({ level: event.data.level, text });
+      if (!checking) showConsole();
+    }
+    if (event.data.type === 'storage' && !checking && view === 'mine') {
+      try { localStorage.setItem(storageKey, JSON.stringify(event.data.data)); } catch (e) { /* не страшно */ }
+    }
+  });
+
   function applyWidth(value) {
     frame.style.width = value ? `${value}px` : '100%';
   }
 
   function render() {
     if (checking) return;
-    frame.srcdoc = buildPreviewDoc(task, view === 'sample' ? task.sample : editor.getValue(), null);
+    consoleLines = [];
+    showConsole();
+    const storage = view === 'sample' ? {} : loadStorage();
+    frame.srcdoc = buildPreviewDoc(task, view === 'sample' ? task.sample : editor.getValue(), null, storage);
     applyWidth(width);
   }
 
@@ -174,11 +255,12 @@ function setupHtml(section, task) {
       };
       const timer = setTimeout(() => finish({
         logs: [], results: [],
-        error: { name: 'Таймаут', message: 'страница не ответила за 8 секунд.' },
+        error: { name: 'Таймаут', message: 'страница не ответила за 8 секунд. Если в задании есть форма, возможно, она отправилась и страница перезагрузилась — проверь preventDefault.' },
       }), 8000);
       window.addEventListener('message', onMessage);
       applyWidth('');
-      frame.srcdoc = buildPreviewDoc(task, editor.getValue(), buildHarness(task.tests));
+      consoleLines = [];
+      frame.srcdoc = buildPreviewDoc(task, editor.getValue(), buildHarness(task.tests), {}); // тесты — с пустым хранилищем
     });
   }
 
@@ -193,6 +275,8 @@ function setupHtml(section, task) {
     output.hidden = false;
     output.innerHTML = '<div class="muted">Проверяю…</div>';
     const result = await runTests();
+    // всё, что скрипт страницы вывел или уронил во время тестов
+    result.logs = consoleLines.map((line) => (line.level === 'error' ? 'Ошибка: ' : '') + line.text);
     checking = false;
     render(); // вернуть обычный предпросмотр и выбранную ширину
 
@@ -218,6 +302,10 @@ function setupHtml(section, task) {
     }
     const act = event.target.closest('[data-act]')?.dataset.act;
     if (act === 'check') check();
+    if (act === 'clear-storage') {
+      try { localStorage.removeItem(storageKey); } catch (e) { /* не страшно */ }
+      render();
+    }
     if (act === 'hint' && hintsShown < hints.length) {
       const hint = el(`<div class="hint"><b>Подсказка ${hintsShown + 1}.</b> ${hints[hintsShown]}</div>`);
       hintBox.append(hint);

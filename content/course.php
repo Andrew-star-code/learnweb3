@@ -26,7 +26,7 @@ return [
         'id' => 'js-browser',
         'title' => 'JavaScript в браузере',
         'summary' => 'DOM, события, формы и хранение данных на клиенте.',
-        'planned' => ['DOM-дерево', 'События и делегирование', 'Формы и валидация', 'localStorage', 'Проект: todo-лист'],
+        'lessons' => ['dom', 'events', 'forms', 'storage', 'project'],
     ],
     [
         'id' => 'js-async',
