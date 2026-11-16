@@ -76,6 +76,9 @@ final class PageController
             if (isset($task['hints'])) {
                 $task['hints'] = array_map([Markdown::class, 'render'], $task['hints']);
             }
+            if (($task['lang'] ?? '') === 'html') {
+                $task['sample'] = $task['solution']; // для вкладки «Образец» в предпросмотре
+            }
             unset($task['solution'], $task['reference'], $task['text']);
             if (($task['lang'] ?? '') === 'php') {
                 unset($task['tests']); // PHP-тесты выполняет сервер, клиенту они не нужны
@@ -89,7 +92,7 @@ final class PageController
             'theory' => Markdown::render($lesson['markdown']),
             'tasks' => $tasks,
             'nav' => Course::neighbours($lesson['id']),
-            'scripts' => ['lesson.js'],
+            'scripts' => ['preview.js', 'lesson.js'],
         ]);
     }
 

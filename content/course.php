@@ -20,7 +20,8 @@ return [
         'id' => 'layout',
         'title' => 'Вёрстка: HTML, CSS, Bootstrap',
         'summary' => 'Семантическая разметка, современный CSS и Bootstrap 5 — включая то, как он устроен внутри.',
-        'planned' => ['Семантика HTML', 'Формы', 'Каскад и селекторы', 'Блочная модель', 'Flexbox', 'Grid', 'Адаптивность', 'Bootstrap: сетка и утилиты', 'Bootstrap: компоненты', 'Bootstrap 3/4 и jQuery в легаси'],
+        'lessons' => ['html-semantics', 'forms', 'css-basics'],
+        'planned' => ['Блочная модель', 'Flexbox', 'Grid', 'Адаптивность', 'Bootstrap: сетка и утилиты', 'Bootstrap: компоненты', 'Bootstrap 3/4 и jQuery в легаси'],
     ],
     [
         'id' => 'js-browser',

@@ -212,7 +212,8 @@ function setupPlan(section, task) {
 
 document.querySelectorAll('.task').forEach((section) => {
   const task = tasks[Number(section.dataset.task)];
-  if (task.type === 'code') setupCode(section, task);
+  if (task.type === 'code' && task.lang === 'html') setupHtml(section, task); // см. preview.js
+  else if (task.type === 'code') setupCode(section, task);
   if (task.type === 'quiz') setupQuiz(section, task);
   if (task.type === 'plan') setupPlan(section, task);
 });
