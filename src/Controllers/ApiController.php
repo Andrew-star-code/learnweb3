@@ -46,6 +46,9 @@ final class ApiController
         if ($task['type'] === 'plan') {
             $this->json(['html' => Markdown::render($task['reference'])]);
         }
+        if (!empty($task['noSolution'])) {
+            $this->fail('У проекта нет готового решения', 403);
+        }
         $this->json(['solution' => $task['solution'] ?? '']);
     }
 

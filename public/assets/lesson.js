@@ -59,7 +59,8 @@ function setupCode(section, task) {
       hintBtn.disabled = hintsShown >= hints.length;
     }
     // решение открывается после двух честных попыток, всех подсказок или уже решённого задания
-    solutionBtn.hidden = !(task.status === 'done' || task.attempts >= 2 || (hints.length && hintsShown >= hints.length));
+    // у проектов готового решения нет — только чек-лист из тестов
+    solutionBtn.hidden = task.noSolution || !(task.status === 'done' || task.attempts >= 2 || (hints.length && hintsShown >= hints.length));
   }
 
   function execute(withTests) {

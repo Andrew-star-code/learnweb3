@@ -183,6 +183,7 @@ th { font-weight: 600; color: var(--muted); font-size: .85rem; }
 .tag-fix { background: #fde6d8; color: #9c4a14; }
 .tag-tests { background: #e9e0f8; color: #5b3a9c; }
 .tag-scratch { background: #d9f0e2; color: #1d6b40; }
+.tag-project { background: #1f2328; color: #ffffff; }
 .tag-plan { background: #fbeec2; color: #7a5a00; }
 .tag-quiz { background: #e6e8ec; color: #454b54; }
 

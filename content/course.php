@@ -14,8 +14,7 @@ return [
         'id' => 'js-core',
         'title' => 'Ядро JavaScript',
         'summary' => 'Язык без браузера: типы, управление потоком, функции, коллекции, классы, модули.',
-        'lessons' => ['types', 'control-flow', 'functions'],
-        'planned' => ['Массивы и их методы', 'Объекты', 'Строки', 'Замыкания', 'Классы', 'Модули', 'Ошибки и try/catch', 'Проект: консольная утилита'],
+        'lessons' => ['types', 'control-flow', 'functions', 'arrays', 'objects', 'strings', 'closures', 'classes', 'errors', 'modules', 'project'],
     ],
     [
         'id' => 'layout',
