@@ -103,14 +103,40 @@ function test($name, $fn) {
         $__results[] = array("name" => $name, "ok" => false, "message" => $e->getMessage());
     }
 }
+/** Значение в коротком читаемом виде для сообщений тестов: [90,100] вместо array ( 0 => 90, ... ). */
+function __show($value) {
+    if (is_object($value)) {
+        return "объект " . get_class($value);
+    }
+    if (is_float($value) && floor($value) == $value && abs($value) < 1e15) {
+        return number_format($value, 1, ".", "");   // 4.0, а не 4 — чтобы было видно, что это float
+    }
+    $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return $json === false ? var_export($value, true) : $json;
+}
 function assert_eq($expected, $actual, $message = "") {
     if ($expected !== $actual) {
+        $types = gettype($expected) !== gettype($actual)
+            ? " (типы: " . gettype($expected) . " и " . gettype($actual) . ")" : "";
         throw new \Exception(($message !== "" ? $message . ": " : "")
-            . "ожидалось " . var_export($expected, true) . ", получено " . var_export($actual, true));
+            . "ожидалось " . __show($expected) . ", получено " . __show($actual) . $types);
     }
 }
 function assert_true($value, $message = "Условие не выполнено") {
     if ($value !== true) { throw new \Exception($message); }
+}
+/** Проверяет, что функция бросает исключение (при желании — заданного класса). */
+function assert_throws($fn, $class = "Throwable", $message = "") {
+    try {
+        $fn();
+    } catch (\Throwable $e) {
+        if (!($e instanceof $class)) {
+            throw new \Exception(($message !== "" ? $message . ": " : "")
+                . "ожидалось исключение " . $class . ", брошено " . get_class($e));
+        }
+        return $e;
+    }
+    throw new \Exception($message !== "" ? $message : "Ожидалось исключение, но код выполнился без него");
 }
 /** Всё, что код ученика напечатал через echo/print. */
 function output() { global $__output; return $__output; }

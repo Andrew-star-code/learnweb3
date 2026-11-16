@@ -93,7 +93,7 @@ function runJs(code, tests) {
 async function runPhp(code, version, taskId) {
   const r = await api('/api/run-php', { code, version, taskId });
   if (r.error) return { logs: [], results: [], error: { name: 'Ошибка', message: r.error } };
-  const out = { logs: r.stdout ? [r.stdout] : [], results: r.results || [], error: null, version: r.version };
+  const out = { logs: r.stdout ? [r.stdout.replace(/^\n+/, '')] : [], results: r.results || [], error: null, version: r.version };
   if (r.timedOut) {
     out.error = { name: 'Таймаут', message: 'код выполнялся дольше 5 секунд. Скорее всего, где-то бесконечный цикл.' };
   } else if (taskId && !r.results) {

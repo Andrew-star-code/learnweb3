@@ -26,6 +26,10 @@ function setupCode(section, task) {
       <div class="editor"></div>
       <div class="toolbar">
         <button class="btn" data-act="run">▶ Запустить</button>
+        ${task.lang === 'php' ? `<select class="php-version" title="На какой версии PHP запустить код. Проверка тестами всегда идёт на версии задания.">
+          <option value="8">PHP 8.3</option>
+          <option value="7"${document.querySelector('meta[name=php7]').content === '1' ? '' : ' disabled'}>PHP 7.0</option>
+        </select>` : ''}
         <button class="btn btn-primary" data-act="check">Проверить <kbd>Ctrl+Enter</kbd></button>
         <span class="spacer"></span>
         ${hints.length ? '<button class="btn btn-quiet" data-act="hint"></button>' : ''}
@@ -65,7 +69,11 @@ function setupCode(section, task) {
 
   function execute(withTests) {
     const code = editor.getValue();
-    if (task.lang === 'php') return runPhp(code, task.php || '8', withTests ? task.id : undefined);
+    if (task.lang === 'php') {
+      // «Запустить» — на выбранной версии; «Проверить» — на версии, заданной в задании
+      const version = withTests ? (task.php || '8') : body.querySelector('.php-version').value;
+      return runPhp(code, version, withTests ? task.id : undefined);
+    }
     return runJs(code, withTests ? task.tests : '');
   }
 

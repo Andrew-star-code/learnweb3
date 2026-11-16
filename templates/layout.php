@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= e($csrf) ?>">
+    <meta name="php7" content="<?= getenv('PHP7_RUNNER_URL') ? '1' : '0' ?>">
     <title><?= e($title) ?> — learnweb</title>
     <link rel="stylesheet" href="/vendor/codemirror/codemirror.css">
     <link rel="stylesheet" href="/assets/app.css">
