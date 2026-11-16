@@ -21,7 +21,8 @@ function runner_exec($code, $tests = null, $timeout = 5)
     $marker = null;
     if ($tests !== null) {
         $marker = '<<<' . bin2hex(random_bytes(8)) . '>>>';
-        file_put_contents($dir . '/tests.php', "<?php\n" . $tests);
+        // strict_types действует для файла, из которого идёт вызов, — включаем и для тестов
+        file_put_contents($dir . '/tests.php', "<?php\ndeclare(strict_types=1);\n" . $tests);
         file_put_contents($dir . '/main.php', runner_harness($marker));
         $entry = $dir . '/main.php';
     }

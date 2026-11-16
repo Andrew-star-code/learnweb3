@@ -38,8 +38,7 @@ return [
         'id' => 'php-core',
         'title' => 'Ядро PHP',
         'summary' => 'Современный PHP 8 с пометками, что из этого работает в PHP 7.',
-        'lessons' => ['types', 'arrays'],
-        'planned' => ['Функции', 'Строки', 'ООП', 'Неймспейсы и автозагрузка', 'Исключения', 'Проект: парсер логов'],
+        'lessons' => ['types', 'arrays', 'functions', 'strings', 'oop', 'namespaces', 'exceptions', 'project'],
     ],
     [
         'id' => 'php-legacy',
