@@ -13,6 +13,7 @@ if (PHP_SAPI === 'cli-server' && $path !== '/' && is_file(__DIR__ . $path)) {
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Controllers\ApiController;
+use App\Controllers\DemoApiController;
 use App\Controllers\PageController;
 use App\Router;
 use App\Security;
@@ -31,7 +32,29 @@ $router->post('/api/solution', fn() => (new ApiController())->solution());
 $router->post('/api/run-php', fn() => (new ApiController())->runPhp());
 $router->post('/api/card', fn() => (new ApiController())->card());
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Учебное API для заданий про fetch. Запросы к нему приходят из изолированной
+// рамки предпросмотра, поэтому оно разрешает любые источники и не требует токена.
+if (strncmp($path, '/api/demo/', 10) === 0) {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { // предварительный запрос браузера (preflight)
+        http_response_code(204);
+        exit;
+    }
+
+    $demo = new DemoApiController();
+    $router->post('/api/demo/reset', fn() => $demo->reset());
+    $router->post('/api/demo/fail-next', fn() => $demo->failNext());
+    if (!in_array($path, ['/api/demo/reset', '/api/demo/fail-next'], true)) {
+        $demo->before();
+    }
+    $router->get('/api/demo/products', fn() => $demo->products());
+    $router->get('/api/demo/products/{id}', fn(array $p) => $demo->product($p));
+    $router->get('/api/demo/todos', fn() => $demo->todos());
+    $router->post('/api/demo/todos', fn() => $demo->createTodo());
+    $router->add('DELETE', '/api/demo/todos/{id}', fn(array $p) => $demo->deleteTodo($p));
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Security::checkToken();
 }
 

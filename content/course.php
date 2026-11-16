@@ -32,7 +32,7 @@ return [
         'id' => 'js-async',
         'title' => 'Асинхронность и сеть',
         'summary' => 'Как браузер делает несколько дел сразу и разговаривает с сервером.',
-        'planned' => ['Event loop', 'Промисы', 'async/await', 'HTTP', 'fetch и JSON', 'Проект: клиент к публичному API'],
+        'lessons' => ['event-loop', 'promises', 'async-await', 'http', 'fetch', 'project'],
     ],
     [
         'id' => 'php-core',

@@ -22,7 +22,7 @@ final class Router
         $this->add('POST', $pattern, $handler);
     }
 
-    private function add(string $method, string $pattern, callable $handler): void
+    public function add(string $method, string $pattern, callable $handler): void
     {
         // {name} превращаем в именованную группу, которая не захватывает слэши
         $regex = preg_replace('#\{(\w+)\}#', '(?<$1>[a-z0-9-]+)', $pattern);

@@ -82,6 +82,15 @@ function buildHarness(tests) {
   const box = (target) => $(target).getBoundingClientRect();
   const text = (target) => $(target).textContent.replace(/\\s+/g, ' ').trim();
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  // Дождаться, пока условие станет истинным: для всего, что происходит не сразу (запросы, таймеры)
+  const until = async (condition, message, timeout = 3000) => {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      try { if (condition()) return; } catch (error) { /* элемент ещё не появился */ }
+      await wait(25);
+    }
+    throw new Error(message || 'Ожидаемое изменение на странице не произошло');
+  };
   // Действия пользователя: щелчок, ввод текста, отправка формы
   const click = (target) => $(target).click();
   const type = (target, value) => {

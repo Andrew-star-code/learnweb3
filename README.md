@@ -32,6 +32,7 @@ php -S localhost:8000 -t public public/index.php
 | `src/` | Движок: роутер, Markdown, прогресс, запуск PHP-кода |
 | `templates/` | HTML-шаблоны страниц |
 | `public/assets/` | Стили и клиентский JS (редактор, проверка заданий) |
+| `src/Controllers/DemoApiController.php` | Учебное API для заданий про `fetch`: `/api/demo/products`, `/api/demo/todos` |
 | `runner/` | Запуск PHP-кода в отдельном процессе; работает и на PHP 7.0 |
 | `data/` | Твой прогресс (SQLite). В git не попадает |
 | `tools/verify.js` | Проверка, что решения всех JS-заданий проходят тесты |

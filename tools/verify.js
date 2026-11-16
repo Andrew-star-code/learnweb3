@@ -9,6 +9,10 @@ const { runSuite } = require('../public/assets/runner-worker.js');
 const root = path.dirname(__dirname);
 const tasks = JSON.parse(execFileSync('php', [path.join(root, 'tools/dump-tasks.php')], { maxBuffer: 1e8 }));
 
+// Заготовки заданий «Починить» могут оставлять необработанные отклонённые промисы.
+// В браузере это только сообщение в консоли, а Node от такого завершается.
+process.on('unhandledRejection', () => {});
+
 const allPassed = (run) => !run.error && run.results.length > 0 && run.results.every((r) => r.ok);
 
 (async () => {
