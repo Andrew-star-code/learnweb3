@@ -65,7 +65,11 @@ final class ApiController
                 $this->fail('Задание не найдено', 404);
             }
             $tests = $task['tests'] ?? null;
-            $version = (string) ($task['php'] ?? $version);
+            // у задания своя версия; 'both' — проверка на обеих, версию выбирает клиент
+            $taskVersion = (string) ($task['php'] ?? '8');
+            if ($taskVersion !== 'both') {
+                $version = $taskVersion;
+            }
         }
         $this->json(PhpRunner::run($code, $version, $tests));
     }

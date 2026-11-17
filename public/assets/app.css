@@ -229,6 +229,18 @@ div.CodeMirror span.CodeMirror-matchingbracket { color: var(--accent); font-weig
 .out-error { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: .93rem; overflow-wrap: anywhere; }
 .out-success { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-weight: 600; }
 
+/* Один код — две версии PHP */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.compare-col { min-width: 0; border-left: 3px solid var(--border); padding-left: 12px; }
+.compare-head { font: 600 .82rem var(--mono); color: var(--muted); margin-bottom: 6px; }
+.compare-verdict { font-size: .9rem; font-weight: 600; border-radius: 8px; padding: 6px 12px; margin-bottom: 10px; }
+.compare-verdict.is-same { background: var(--surface-2); color: var(--muted); }
+.compare-verdict.is-diff { background: var(--warn-soft); color: var(--text); }
+.example-run { margin: -6px 0 1.2em; }
+.example-run .btn { font-size: .85rem; padding: 4px 10px; }
+.check-on { font-size: .85rem; }
+@media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+
 .tests { list-style: none; margin: 0; padding: 0; }
 .tests li { display: flex; gap: 8px; padding: 4px 0; font-size: .93rem; }
 .tests li > span { flex: none; font-weight: 700; width: 1em; }

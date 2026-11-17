@@ -102,6 +102,55 @@ async function runPhp(code, version, taskId) {
   return out;
 }
 
+/** Есть ли у платформы исполнитель PHP 7.0 (запуск через docker compose). */
+function php7Ready() {
+  return document.querySelector('meta[name=php7]')?.content === '1';
+}
+
+/** Один и тот же код на обеих версиях PHP. Возвращает { 8: результат, 7: результат }. */
+async function runPhpBoth(code, taskId) {
+  const [modern, legacy] = await Promise.all([runPhp(code, '8', taskId), runPhp(code, '7', taskId)]);
+  return { 8: modern, 7: legacy };
+}
+
+function runPassed(run) {
+  return !run.error && run.results.length > 0 && run.results.every((r) => r.ok);
+}
+
+/** Две колонки вывода: слева PHP 8, справа PHP 7 — и пометка, совпал ли результат. */
+function renderCompare(runs, { showTests }) {
+  const fingerprint = (run) => JSON.stringify([run.logs, run.error && run.error.message, showTests ? run.results : null]);
+  const same = fingerprint(runs[8]) === fingerprint(runs[7]);
+  const column = (run, fallback) => `<div class="compare-col">
+      <div class="compare-head">PHP ${escapeHtml(run.version || fallback)}</div>
+      ${renderRun(run, { showTests })}
+    </div>`;
+  return `<div class="compare-verdict ${same ? 'is-same' : 'is-diff'}">${same
+    ? 'Версии ведут себя одинаково.' : 'Версии ведут себя по-разному — сравни колонки.'}</div>
+    <div class="compare">${column(runs[8], '8.3')}${column(runs[7], '7.0')}</div>`;
+}
+
+/**
+ * Примеры из теории с пометкой «```php versions»: под блоком появляется кнопка,
+ * которая выполняет его на обеих версиях PHP и показывает вывод рядом.
+ */
+function setupExamples(root) {
+  root.querySelectorAll('pre.code[data-run="versions"]').forEach((pre) => {
+    const source = pre.textContent;
+    const code = source.includes('<?php') ? source : '<?php\n' + source;
+    const box = document.createElement('div');
+    box.className = 'example-run';
+    box.innerHTML = '<button class="btn" type="button">▶ Запустить на PHP 8.3 и 7.0</button><div class="output" hidden></div>';
+    const output = box.querySelector('.output');
+    box.querySelector('button').addEventListener('click', async () => {
+      output.hidden = false;
+      output.innerHTML = '<div class="muted">Выполняю…</div>';
+      output.innerHTML = renderCompare(await runPhpBoth(code), { showTests: false });
+    });
+    pre.after(box);
+  });
+}
+
 /** HTML для панели вывода: консоль, ошибка, результаты тестов. */
 function renderRun(run, { showTests }) {
   let html = '';
@@ -125,4 +174,7 @@ function renderRun(run, { showTests }) {
   return html;
 }
 
-document.addEventListener('DOMContentLoaded', () => highlightIn(document));
+document.addEventListener('DOMContentLoaded', () => {
+  setupExamples(document); // до подсветки: ей нужен исходный текст блока
+  highlightIn(document);
+});

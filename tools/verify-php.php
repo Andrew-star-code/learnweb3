@@ -34,33 +34,50 @@ foreach (Course::blocks() as $block) {
             if ($task['type'] !== 'code' || $task['lang'] !== 'php') {
                 continue;
             }
-            $version = (string) ($task['php'] ?? '8');
-            if ($version === '7' && !getenv('PHP7_RUNNER_URL')) {
-                $skipped++;
+            // 'both' — задание проверяется на двух версиях: решение проходит на каждой,
+            // заготовка не проходит хотя бы на одной
+            $php = (string) ($task['php'] ?? '8');
+            $versions = $php === 'both' ? ['8', '7'] : [$php];
+            if (!getenv('PHP7_RUNNER_URL')) {
+                if (in_array('7', $versions, true)) {
+                    $skipped++;
+                }
+                $versions = array_values(array_diff($versions, ['7']));
+            }
+            if (!$versions) {
                 continue;
             }
             $checked++;
 
-            $solved = PhpRunner::run($task['solution'], $version, $task['tests']);
-            if (!$passed($solved)) {
-                $problems++;
-                echo "✗ {$task['id']}: решение не проходит тесты\n";
-                if (isset($solved['error'])) {
-                    echo "    {$solved['error']}\n";
-                }
-                if (trim($solved['stdout'] ?? '') !== '') {
-                    echo '    ' . str_replace("\n", "\n    ", trim($solved['stdout'])) . "\n";
-                }
-                foreach ($solved['results'] ?? [] as $result) {
-                    if (!$result['ok']) {
-                        echo "    {$result['name']}: {$result['message']}\n";
+            // пропуски ___ сами по себе — синтаксическая ошибка, поэтому заменяем их на null
+            $starter = str_replace('___', 'null', $task['starter']);
+            $starterPasses = true;
+
+            foreach ($versions as $version) {
+                $solved = PhpRunner::run($task['solution'], $version, $task['tests']);
+                if (!$passed($solved)) {
+                    $problems++;
+                    echo "✗ {$task['id']}: решение не проходит тесты на PHP $version\n";
+                    if (isset($solved['error'])) {
+                        echo "    {$solved['error']}\n";
                     }
+                    if (trim($solved['stdout'] ?? '') !== '') {
+                        echo '    ' . str_replace("\n", "\n    ", trim($solved['stdout'])) . "\n";
+                    }
+                    foreach ($solved['results'] ?? [] as $result) {
+                        if (!$result['ok']) {
+                            echo "    {$result['name']}: {$result['message']}\n";
+                        }
+                    }
+                }
+                if ($starterPasses && empty($task['hangs'])) {
+                    $starterPasses = $passed(PhpRunner::run($starter, $version, $task['tests']));
                 }
             }
 
-            // пропуски ___ сами по себе — синтаксическая ошибка, поэтому заменяем их на null
-            $starter = str_replace('___', 'null', $task['starter']);
-            if (empty($task['hangs']) && $passed(PhpRunner::run($starter, $version, $task['tests']))) {
+            // без контейнера php7 про заготовку задания «на двух версиях» судить нельзя
+            $complete = count($versions) === ($php === 'both' ? 2 : 1);
+            if (empty($task['hangs']) && $starterPasses && $complete) {
                 $problems++;
                 echo "✗ {$task['id']}: заготовка уже проходит все тесты\n";
             }
@@ -69,7 +86,7 @@ foreach (Course::blocks() as $block) {
 }
 
 if ($skipped > 0) {
-    echo "Пропущено заданий для PHP 7 (нет контейнера): $skipped\n";
+    echo "Не проверено на PHP 7 (нет контейнера): $skipped\n";
 }
 echo $problems > 0 ? "\nПроблем: $problems\n" : "Всё в порядке: заданий на PHP $checked.\n";
 exit($problems > 0 ? 1 : 0);
