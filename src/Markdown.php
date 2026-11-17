@@ -30,8 +30,9 @@ final class Markdown
                 continue;
             }
 
-            // ```lang ... ```
-            if (preg_match('/^```(\w*)\s*$/', $line, $m)) {
+            // ```lang ... ```; пометка «```php versions» добавляет к примеру кнопку
+            // «запустить на PHP 8.3 и 7.0» (см. setupExamples в core.js)
+            if (preg_match('/^```(\w*)(?:\s+(\w+))?\s*$/', $line, $m)) {
                 $code = [];
                 $i++;
                 while ($i < $n && !preg_match('/^```\s*$/', $lines[$i])) {
@@ -39,7 +40,8 @@ final class Markdown
                 }
                 $i++;
                 $lang = $m[1] !== '' ? $m[1] : 'text';
-                $html .= '<pre class="code" data-lang="' . self::esc($lang) . '"><code>'
+                $run = ($m[2] ?? '') === 'versions' && $lang === 'php' ? ' data-run="versions"' : '';
+                $html .= '<pre class="code" data-lang="' . self::esc($lang) . '"' . $run . '><code>'
                     . self::esc(implode("\n", $code)) . "</code></pre>\n";
                 continue;
             }

@@ -21,6 +21,11 @@ function markDone(section, task) {
 function setupCode(section, task) {
   const body = section.querySelector('.task-body');
   const hints = task.hints || [];
+  // задания блока «Легаси» проверяются на PHP 7.0 или сразу на двух версиях
+  const needs7 = task.lang === 'php' && (task.php === '7' || task.php === 'both');
+  const checkedOn = !needs7 ? ''
+    : (task.php === 'both' ? 'Проверка: PHP 8.3 и 7.0' : 'Проверка: PHP 7.0')
+      + (php7Ready() ? '' : ' — нужен запуск через docker compose');
   body.append(el(`
     <div>
       <div class="editor"></div>
@@ -28,9 +33,11 @@ function setupCode(section, task) {
         <button class="btn" data-act="run">▶ Запустить</button>
         ${task.lang === 'php' ? `<select class="php-version" title="На какой версии PHP запустить код. Проверка тестами всегда идёт на версии задания.">
           <option value="8">PHP 8.3</option>
-          <option value="7"${document.querySelector('meta[name=php7]').content === '1' ? '' : ' disabled'}>PHP 7.0</option>
+          <option value="7"${php7Ready() ? '' : ' disabled'}>PHP 7.0</option>
+          <option value="both"${php7Ready() ? '' : ' disabled'}>Обе версии рядом</option>
         </select>` : ''}
         <button class="btn btn-primary" data-act="check">Проверить <kbd>Ctrl+Enter</kbd></button>
+        ${checkedOn ? `<span class="muted check-on">${checkedOn}</span>` : ''}
         <span class="spacer"></span>
         ${hints.length ? '<button class="btn btn-quiet" data-act="hint"></button>' : ''}
         <button class="btn btn-quiet" data-act="solution" hidden>Показать решение</button>
@@ -46,6 +53,10 @@ function setupCode(section, task) {
   const hintBtn = body.querySelector('[data-act=hint]');
   const solutionBtn = body.querySelector('[data-act=solution]');
   let hintsShown = 0;
+
+  // версия для кнопки «Запустить» по умолчанию та же, на которой задание проверяется
+  const versionSelect = body.querySelector('.php-version');
+  if (needs7 && php7Ready()) versionSelect.value = task.php;
 
   const editor = makeEditor(body.querySelector('.editor'), task.lang, task.saved ?? task.starter, () => check());
 
@@ -67,16 +78,6 @@ function setupCode(section, task) {
     solutionBtn.hidden = task.noSolution || !(task.status === 'done' || task.attempts >= 2 || (hints.length && hintsShown >= hints.length));
   }
 
-  function execute(withTests) {
-    const code = editor.getValue();
-    if (task.lang === 'php') {
-      // «Запустить» — на выбранной версии; «Проверить» — на версии, заданной в задании
-      const version = withTests ? (task.php || '8') : body.querySelector('.php-version').value;
-      return runPhp(code, version, withTests ? task.id : undefined);
-    }
-    return runJs(code, withTests ? task.tests : '');
-  }
-
   // В заданиях «Дописать» пропуски обозначены ___ — напоминаем, если они остались
   function hasBlanks() {
     if (!/\b___\b/.test(editor.getValue())) return false;
@@ -87,22 +88,41 @@ function setupCode(section, task) {
 
   async function run() {
     if (hasBlanks()) return;
+    const code = editor.getValue();
     output.hidden = false;
     output.innerHTML = '<div class="muted">Выполняю…</div>';
-    output.innerHTML = renderRun(await execute(false), { showTests: false });
+    if (task.lang !== 'php') {
+      output.innerHTML = renderRun(await runJs(code, ''), { showTests: false });
+      return;
+    }
+    // «Запустить» — на выбранной версии; «Проверить» — на версии, заданной в задании
+    const version = versionSelect.value;
+    output.innerHTML = version === 'both'
+      ? renderCompare(await runPhpBoth(code), { showTests: false })
+      : renderRun(await runPhp(code, version), { showTests: false });
   }
 
   async function check() {
     if (hasBlanks()) return;
+    const code = editor.getValue();
     output.hidden = false;
     output.innerHTML = '<div class="muted">Проверяю…</div>';
-    const result = await execute(true);
-    const passed = !result.error && result.results.length > 0 && result.results.every((r) => r.ok);
-    let html = renderRun(result, { showTests: true });
-    if (passed) html = '<div class="out-success">Все тесты пройдены.</div>' + html;
+    let passed;
+    let html;
+    if (task.lang === 'php' && task.php === 'both') {
+      const runs = await runPhpBoth(code, task.id);
+      passed = runPassed(runs[8]) && runPassed(runs[7]);
+      html = renderCompare(runs, { showTests: true });
+      if (passed) html = '<div class="out-success">Все тесты пройдены на обеих версиях.</div>' + html;
+    } else {
+      const result = task.lang === 'php' ? await runPhp(code, task.php || '8', task.id) : await runJs(code, task.tests);
+      passed = runPassed(result);
+      html = renderRun(result, { showTests: true });
+      if (passed) html = '<div class="out-success">Все тесты пройдены.</div>' + html;
+    }
     output.innerHTML = html;
 
-    const saved = await api('/api/progress', { taskId: task.id, code: editor.getValue(), attempt: true, passed });
+    const saved = await api('/api/progress', { taskId: task.id, code, attempt: true, passed });
     task.attempts = saved.attempts;
     if (passed) markDone(section, task);
     refreshButtons();
